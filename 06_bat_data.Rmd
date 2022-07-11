@@ -645,7 +645,7 @@ While a simpler implementation using total residence time divided by the number 
 ncores <- parallel::detectCores(logical = FALSE)
 ```
 
-```{r}
+```{r benchmarking}
 args <- list(
   x = data_smooth[[1]][, c("X", "Y", "time", "TAG")],
   radius = 50,
