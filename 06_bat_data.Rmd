@@ -645,7 +645,7 @@ While a simpler implementation using total residence time divided by the number 
 ncores <- parallel::detectCores(logical = FALSE)
 ```
 
-```{r benchmarking with bench}
+```{r benchmarking with bench, eval=F}
 args <- list(
   x = data_smooth[[1]][, c("X", "Y", "time", "TAG")],
   radius = 50,
@@ -663,26 +663,38 @@ bnchL <- bench::mark(
 )
 #Light Multithreading
 bnchLM <- bench::mark(
-  rlang::exec(recurseLight::getRecursions,!!!argsLM)
+  rlang::exec(recurseLight::getRecursions,!!!argsLM),
+  iterations = 1
 )
 #Olds implementation 
 bnch <- bench::mark(
-  rlang::exec(recurse::getRecursions,!!!args)
+  rlang::exec(recurse::getRecursions,!!!args),
+  iterations = 1
 )
 ```
 
-```{r benchmark with rbenchmark}
+```{r bench all with bench, eval=F}
+bnchA<-bench::mark(
+  rlang::exec(recurseLight::getRecursions,!!!args),
+  rlang::exec(recurseLight::getRecursions,!!!argsLM),
+  rlang::exec(recurse::getRecursions,!!!args),
+  iterations=5, check = F, memory = T
+  
+)
+```
+
+```{r benchmark with rbenchmark, eval=F}
 testset <- data_smooth[[1]][, c("X", "Y", "time", "TAG")]
 rbenchmark::benchmark(
-  recurseLight_Sing = recurseLight::getRecursions(testset,radius = 50, timeunits = "mins", ncores = 1),
+  #recurseLight_Sing = recurseLight::getRecursions(testset,radius = 50, timeunits = "mins", ncores = 1),
   recurseLight_Multi = recurseLight::getRecursions(testset,radius = 50, timeunits = "mins", ncores = ncores),
   recurse_old = recurse::getRecursions(testset,radius = 50, timeunits = "mins"),
-  order = "relative", replications = 1
+  order = "relative", replications = 5
 )
 ```
 
 
-```{r print results}
+```{r print results, eval=F}
 bnchR<- list(c("recurse","recurseLight","recurseLight (OpenMP)"),c(as.character(bnch$mem_alloc), as.character(bnchL$mem_alloc),as.character(bnchLM$mem_alloc)),c(as.character(bnch$median),as.character(bnchL$median),as.character(bnchLM$median)))
 writeLines(
   sprintf("Allocated memory %s version on dataset with %d rows: %s; Elapsed time: %s", bnchR[[1]], nrow(args[[1]]), bnchR[[2]],bnchR[[3]])
@@ -690,7 +702,7 @@ writeLines(
 ```
 
 Check if Mulithreading approach yields same result. 
-```{r is equal}
+```{r is equal, eval=F}
 all(
   isTRUE(all.equal(drop(rlang::exec(recurseLight::getRecursions,!!!args)), drop(rlang::exec(recurseLight::getRecursions,!!!argsM))))
 )
@@ -702,7 +714,7 @@ results <- recurseLight::getRecursions(
     x = test,
     radius = 50,
     timeunits = "mins",
-    ncore 
+    #ncores = ncores 
   ) 
 ```
 
@@ -725,10 +737,15 @@ data_residence <- lapply(data_smooth, function(dt) {
   # count long absences from the each position
   dt_recurse[, timeSinceLastVisit :=
     ifelse(is.na(timeSinceLastVisit), -Inf, timeSinceLastVisit)]
+
+
+  
   dt_recurse[, longAbsenceCounter := cumsum(timeSinceLastVisit > 5),
     by = .(coordIdx)
   ]
-
+  
+  # keep everything left of the first true
+  # first true is first time since last visit >5min --> defines stationary point 
   # filter data to exclude revisits after the first long absence of 60 mins
   dt_recurse <- dt_recurse[longAbsenceCounter < 1, ]
 
@@ -848,6 +865,9 @@ fig_roost_exclude <-
   )
 ```
 
+```{r plot}
+print(fig_roost_exclude)
+```
 We now filter the data to exclude both day-time data, as well as data that is < 1 km from the roost.
 
 ```{r}
@@ -885,6 +905,7 @@ data_residence[, `:=`(
   x = X, y = Y
 )]
 
+## just for info
 # get mean residence time per id
 data_residence[, list(
   mean_residence = mean(resTime),
@@ -947,6 +968,16 @@ st_write(data_spatials,
   dsn = "data/data_bat_residence_patches.gpkg",
   append = FALSE
 )
+```
+
+In the following I plot the data directly in R 
+```{r plotting sf features}
+mp <- st_read("data/data_bat_residence_patches.gpkg")
+```
+
+```{r plot sf}
+plot(mp['patch'],reset = F)
+#plot(mp[3,2], col = 'grey', add = TRUE)
 ```
 
 Write cleaned bat data.
