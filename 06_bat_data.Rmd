@@ -714,7 +714,7 @@ results <- recurseLight::getRecursions(
     x = test,
     radius = 50,
     timeunits = "mins",
-    #ncores = ncores 
+    ncores = ncores 
   ) 
 ```
 
@@ -726,7 +726,8 @@ data_residence <- lapply(data_smooth, function(dt) {
   dt_recurse <- recurseLight::getRecursions(
     x = dt[, c("X", "Y", "time", "TAG")],
     radius = 50,
-    timeunits = "mins"
+    timeunits = "mins",
+    ncores = ncores
   )
 
   # get revisit stats column provided as recurse output
@@ -932,7 +933,7 @@ We apply the residence patch method, using the default argument values (`lim_spa
 data_patches <- lapply(data_residence, atl_res_patch,
   buffer_radius = 25,
   min_fixes = 3,
-  summary_variable = c("night", "distance_roost"),
+  summary_variable = c("night", "resTime"), #"distance_roost"),
   summary_functions = c("mean", "sd")
 )
 ```
